@@ -557,6 +557,28 @@ async fn can_reset_fork_to_new_fork() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn can_test_fork_to_non_fork() {
+    let eth_rpc_url = next_rpc_endpoint(NamedChain::Mainnet);
+    let (api, handle) = spawn(NodeConfig::test().with_eth_rpc_url(Some(eth_rpc_url))).await;
+    let provider = handle.http_provider();
+
+    let op = address!("0xC0d3c0d3c0D3c0D3C0d3C0D3C0D3c0d3c0d30007"); // L2CrossDomainMessenger - Dead on mainnet.
+
+    let tx = TransactionRequest::default().with_to(op).with_input("0x54fd4d50");
+    let tx = WithOtherFields::new(tx);
+
+    let mainnet_call_output = provider.call(tx).await.unwrap();
+
+    assert_eq!(mainnet_call_output, Bytes::new()); // 0x
+
+    api.anvil_reset(None).await.unwrap();
+
+    let code = provider.get_code_at(op).await.unwrap();
+
+    assert_eq!(code, Bytes::new());
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_fork_timestamp() {
     let start = std::time::Instant::now();
 
@@ -1528,9 +1550,9 @@ async fn test_fork_get_account() {
 
     assert_eq!(
         alice_acc.balance,
-        alice_bal -
-            (U256::from(142) +
-                U256::from(receipt.gas_used as u128 * receipt.effective_gas_price)),
+        alice_bal
+            - (U256::from(142)
+                + U256::from(receipt.gas_used as u128 * receipt.effective_gas_price)),
     );
     assert_eq!(alice_acc.nonce, alice_nonce + 1);
 
