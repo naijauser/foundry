@@ -1794,12 +1794,13 @@ impl EthApi {
     /// Handler for RPC call: `anvil_reset`
     pub async fn anvil_reset(&self, forking: Option<Forking>) -> Result<()> {
         node_info!("anvil_reset");
+                    
+        // if we're resetting the fork we need to reset the instance id
+        self.reset_instance_id();
+
         if let Some(forking) = forking {
-            // if we're resetting the fork we need to reset the instance id
-            self.reset_instance_id();
             self.backend.reset_fork(forking).await
         } else {
-            self.reset_instance_id();
             self.backend.disable_fork().await
         }
     }
